@@ -1,92 +1,119 @@
-🚀 Cloud-Native Banking Platform (Kubernetes)
+# 🚀 Cloud-Native Banking Platform (Kubernetes)
 
-A Cloud-Native Banking Platform deployed on a 3-node Kubernetes cluster using Docker, Node.js, NGINX, and PostgreSQL.
+A **Cloud-Native Banking Platform** deployed on a **3-node Kubernetes cluster** using **Docker, Node.js, NGINX, and PostgreSQL**.
 
-This project demonstrates real-world DevOps and Kubernetes practices including container orchestration, scaling, networking, high availability, and debugging distributed systems.
+This project demonstrates real-world **DevOps and Kubernetes practices** including:
 
-🏗️ Architecture
+- Container orchestration
+- Auto scaling
+- High availability database
+- Networking with Ingress
+- Debugging distributed systems
 
-User requests are routed through a Kubernetes Ingress Controller, which directs traffic to the frontend dashboard or backend API depending on the requested path.
+---
 
+# 🏗️ Architecture
+
+User requests are routed through a **Kubernetes Ingress Controller**, which directs traffic to the frontend dashboard or backend API depending on the requested path.
+
+```
 User
   │
   ▼
 Ingress Controller
   │
-  ├── / → Dashboard (NGINX)
+  ├── /      → Dashboard (NGINX)
   │
-  └── /api → Backend API (Node.js)
+  └── /api   → Backend API (Node.js)
                     │
                     ▼
-              PostgreSQL Cluster
-         (2 Nodes - Synchronous Replication)
-🗄️ High Availability Database Design
+             PostgreSQL Cluster
+        (2 Nodes - Synchronous Replication)
+```
 
-The PostgreSQL database is deployed as a StatefulSet with two replicas running on two different Kubernetes worker nodes.
+---
 
-To ensure high availability and data consistency:
+# 🗄️ High Availability Database Design
 
-Each database pod runs on a separate node using Pod Anti-Affinity rules.
-This prevents both database instances from being scheduled on the same node.
-The two database pods maintain synchronous replication, ensuring that data written to the primary node is replicated to the secondary node in real time.
+The **PostgreSQL database** is deployed as a **StatefulSet with two replicas** running on **two different Kubernetes worker nodes**.
 
-Database layout:
+To ensure **high availability and data consistency**:
 
+- Each database pod runs on a **separate node** using **Pod Anti-Affinity rules**
+- This prevents both database instances from being scheduled on the same node
+- The database instances use **synchronous streaming replication** to keep data synchronized
+
+### Database Layout
+
+```
 Worker Node 1
 └── postgres-db-0 (Primary)
 
 Worker Node 2
 └── postgres-db-1 (Replica)
-##############################
-###################
-############
-Replication: Synchronous
 
-![streaming](./images/streming.PNG)
-##############
+Replication: Synchronous Streaming
 ####################
-##############################
-This architecture provides:
+#################
+###########
+![streaming](./images/streming.PNG)
+```
 
-High Availability
-Data Consistency
-Fault Tolerance
-⚙️ Auto Scaling
+### Benefits
 
-The platform implements both Horizontal Pod Autoscaler (HPA) and Vertical Pod Autoscaler (VPA).
+- High Availability
+- Data Consistency
+- Fault Tolerance
 
-Horizontal Pod Autoscaler (HPA)
+---
 
-Automatically increases or decreases the number of pods based on CPU usage.
+# ⚙️ Auto Scaling
 
-Example scaling:
+The platform implements both **Horizontal Pod Autoscaler (HPA)** and **Vertical Pod Autoscaler (VPA)**.
 
-Low Traffic  → 2 Pods
-High Traffic → 6 Pods
-Vertical Pod Autoscaler (VPA)
+## Horizontal Pod Autoscaler (HPA)
 
-Automatically adjusts container CPU and memory requests based on real usage patterns.
+Automatically increases or decreases the number of pods based on **CPU utilization**.
+
+Example:
+
+```
+Low Traffic   → 2 Pods
+High Traffic  → 6 Pods
+```
+
+## Vertical Pod Autoscaler (VPA)
+
+Automatically adjusts **CPU and memory requests** based on real usage patterns.
 
 Benefits:
 
-Prevents resource over-provisioning
-Improves cluster efficiency
-Optimizes application performance
-☸️ Kubernetes Concepts Used
-Deployments
-StatefulSets
-Services (ClusterIP)
-Ingress Controller
-ConfigMaps
-RBAC
-Network Policies
-Pod Anti-Affinity
-Horizontal Pod Autoscaler (HPA)
-Vertical Pod Autoscaler (VPA)
-Multi-node Scheduling
+- Prevents resource over-provisioning
+- Improves cluster efficiency
+- Optimizes application performance
 
-📁 Project Structure
-banking-platform-k8s/
+---
+
+# ☸️ Kubernetes Concepts Used
+
+- Deployments
+- StatefulSets
+- Services (ClusterIP)
+- Ingress Controller
+- ConfigMaps
+- RBAC
+- Network Policies
+- Pod Anti-Affinity
+- Horizontal Pod Autoscaler (HPA)
+- Vertical Pod Autoscaler (VPA)
+- Multi-node Scheduling
+
+---
+
+# 📁 Project Structure
+
+```
+banking-k8s/
 │
 ├── app/
 │   ├── api/
@@ -113,65 +140,99 @@ banking-platform-k8s/
 ├── images/
 │   └── dashboard.png
 │
+├── deploy.sh
+│
 └── README.md
-🚀 How to Run
+```
 
-Start a 3-node Minikube cluster
+---
 
+# 🚀 How to Run
+
+### Start a 3-node Minikube cluster
+
+```bash
 minikube start --nodes 3 -p node
+```
 
-Enable ingress controller
+### Enable ingress controller
 
+```bash
 minikube addons enable ingress
+```
 
-Build application images
+### Build application images
 
+```bash
 docker build -t banking-api:v1 app/api
 docker build -t banking-dashboard:v1 app/dashboard
+```
 
-Load images into Minikube
+### Load images into Minikube
 
+```bash
 minikube image load banking-api:v1
 minikube image load banking-dashboard:v1
+```
 
-Deploy Kubernetes resources
+### Deploy Kubernetes resources
 
+```bash
 kubectl apply -f k8s/
-🌐 Access the Application
+```
+
+---
+
+# 🌐 Access the Application
 
 Get Minikube IP
 
+```bash
 minikube ip
+```
 
-Add to your hosts file
+Add to your **hosts file**
 
+```
 <INGRESS_IP> banking.local
-
-
-
-#######################3
+```
 
 Open in browser
-
-http://banking.local
 ![dashboard](./images/dashboard.png)
+Dashboard
 
-API health check
+```
+http://banking.local
+```
 
+API Health Check
+
+```
 http://banking.local/api/health
-📸 Dashboard Preview
+```
 
-⚠️ Challenges Solved
+---
+
+# 📸 Dashboard Preview
+
+![Dashboard](images/dashboard.png)
+
+---
+
+# ⚠️ Challenges Solved
 
 During this project several real Kubernetes challenges were solved:
 
-Multi-node pod scheduling
-PostgreSQL replication setup
-Ingress routing and path rewriting
-Kubernetes service communication
-Cluster debugging
-👨‍💻 Author
+- Multi-node pod scheduling
+- PostgreSQL replication setup
+- Ingress routing and path rewriting
+- Kubernetes service communication
+- Cluster debugging
 
-Ahmed Rabie Wageh
+---
 
-DevOps & Cloud Enginee
+# 👨‍💻 Author
+
+**Ahmed Rabie Wageh**
+
+DevOps & Cloud Engineer
