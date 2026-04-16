@@ -1,0 +1,41 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: banking-api-hpa
+  namespace: banking
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: banking-api # اسم الديبلويمينت اللي عندك
+  minReplicas: 2     # أقل عدد بودات
+  maxReplicas: 10    # أقصى عدد عند الضغط
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50 # يزود بودات لو استهلاك الـ CPU عدى 50%
+---
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: banking-api-vpa
+  namespace: banking
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: banking-api
+  updatePolicy:
+    updateMode: "Auto" # بياخد القرار أوتوماتيك ويعدل الـ Requests
+  resourcePolicy:
+    containerPolicies:
+      - containerName: "*"
+        minAllowed:
+          cpu: 100m
+          memory: 128Mi
+        maxAllowed:
+          cpu: 1
+          memory: 1Gi

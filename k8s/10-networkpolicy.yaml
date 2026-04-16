@@ -1,0 +1,168 @@
+# 1. GLOBAL DENY ALL
+# This ensures that nothing moves in or out of the namespace unless explicitly allowed.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: banking
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+---
+# 2. ALLOW API TO POSTGRES (INGRESS)
+# Allows the Database to receive traffic from the API only.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-api-to-db
+  namespace: banking
+spec:
+  podSelector:
+    matchLabels:
+      app: postgres-db
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: banking-api
+    ports:
+    - protocol: TCP
+      port: 5432
+---
+# 3. ALLOW API TO REACH POSTGRES (EGRESS)
+# Explicitly allows the API to send requests to the Database port.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-api-egress-to-db
+  namespace: banking
+spec:
+  podSelector:
+    matchLabels:
+      app: banking-api
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: postgres-db
+    ports:
+    - protocol: TCP
+      port: 5432
+---
+# 4. ALLOW INGRESS & DASHBOARD TO API
+# The API needs to be reachable by the User (via Ingress) and the Dashboard.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-external-to-api
+  namespace: banking
+spec:
+  podSelector:
+    matchLabels:
+      app: banking-api
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: banking-dashboard
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 3000
+---
+# 5. ALLOW INGRESS TO DASHBOARD
+# Allows the Nginx Ingress Controller to serve the HTML Dashboard.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-to-dashboard
+  namespace: banking
+spec:
+  podSelector:
+    matchLabels:
+      app: banking-dashboard
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 8080
+---
+# 6. ALLOW DNS RESOLUTION
+# Critical: Allows all pods to talk to CoreDNS in kube-system to resolve service names.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-access
+  namespace: banking
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+---
+# 7. ALLOW EGRESS TO FLUENTD
+# Allows pods to send their logs to the Fluentd DaemonSet.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-to-fluentd
+  namespace: banking
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          name: fluentd
+    ports:
+    - protocol: TCP
+      port: 24224
+---
+---
+# 8. ALLOW FLUENTD TO REACH API SERVER & EXTERNAL
+# يسمح للـ Fluentd بالاتصال بـ API Server لجلب الـ Metadata
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-fluentd-egress
+  namespace: banking
+spec:
+  podSelector:
+    matchLabels:
+      name: fluentd
+  policyTypes:
+  - Egress
+  - Ingress
+  ingress:
+  - from:
+    - podSelector: {} # السماح لكل البودات ببعث اللوجات له
+  egress:
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0 # للسماح له بالوصول لـ API Server أو أي Logging Backend خارجي

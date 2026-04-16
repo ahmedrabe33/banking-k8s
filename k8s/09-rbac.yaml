@@ -1,0 +1,89 @@
+# --- PART 1: BANKING API PERMISSIONS ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: banking-api-sa
+  namespace: banking
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: banking-api-role
+  namespace: banking
+# تم حذف سطر spec من هنا
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "configmaps", "services"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: banking-api-rb
+  namespace: banking
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: banking-api-role
+subjects:
+- kind: ServiceAccount
+  name: banking-api-sa
+  namespace: banking
+
+---
+
+# --- PART 2: DEVELOPER PERMISSIONS ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: developer-role
+  namespace: banking
+rules:
+  - apiGroups: ["", "apps", "networking.k8s.io"]
+    resources: ["pods", "deployments", "services", "ingresses", "pods/log"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+---    
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: developer-rb
+  namespace: banking
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: developer-role
+subjects:
+- kind: User
+  name: "developer"
+  apiGroup: rbac.authorization.k8s.io
+
+---
+
+# --- PART 3: FLUENTD PERMISSIONS (Cluster Level) ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fluentd-sa
+  namespace: banking
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: fluentd-cluster-role
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "namespaces", "nodes"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: fluentd-cluster-rb
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: fluentd-cluster-role
+subjects:
+- kind: ServiceAccount
+  name: fluentd-sa
+  namespace: banking

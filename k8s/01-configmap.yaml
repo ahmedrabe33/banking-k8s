@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: banking-config
+  namespace: banking
+data:
+  # الإعدادات السابقة
+  DB_HOST: "postgres-db-service"
+  DB_NAME: "bankingdb"
+  DB_USER: "bankuser"
+  
+  # إعدادات Nginx الجديدة
+  nginx.conf: |
+    server {
+        listen 80;
+        server_name localhost;
+
+        location / {
+            root /usr/share/nginx/html;
+            index index.html;
+            try_files $uri $uri/ /index.html;
+        }
+
+        # توجيه طلبات الـ API إلى خدمة الـ Backend داخل الكوبرنيتس
+        location /api/ {
+            proxy_pass http://banking-api-service:3000;
+        }
+
+        error_page 500 502 503 504 /50x.html;
+        location = /50x.html {
+            root /usr/share/nginx/html;
+        }
+    }
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-replication-config
+  namespace: banking
+data:
+  # هذا السطر هو مفتاح الحل: يسمح بالـ replication من أي مكان داخل العنقود
+  pg_hba.conf: |
+    local   all             all                                     trust
+    host    all             all             127.0.0.1/32            trust
+    host    replication     replicator      0.0.0.0/0               md5
+    host    all             all             0.0.0.0/0               md5

@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: banking-dashboard
+  namespace: banking
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: banking-dashboard
+  template:
+    metadata:
+      labels:
+        app: banking-dashboard
+    spec:
+      containers:
+      - name: dashboard
+        # تم تحديث اسم الصورة بناءً على طلبك
+        image: ahmedrabie222000/dashboard:v3.0
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        # ربط إعدادات Nginx من الـ ConfigMap لعمل الـ Reverse Proxy
+        - name: nginx-config-volume
+          mountPath: /etc/nginx/conf.d/default.conf
+          subPath: nginx.conf
+      volumes:
+      - name: nginx-config-volume
+        configMap:
+          name: banking-config
+          items:
+          - key: nginx.conf
+            path: nginx.conf

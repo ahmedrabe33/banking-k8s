@@ -1,0 +1,107 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-db
+  namespace: banking
+spec:
+  serviceName: "postgres-db-service"
+  replicas: 2
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      # 1. توزيع البودات على الووركرز (Anti-Affinity)
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values: ["postgres"]
+            topologyKey: "kubernetes.io/hostname"
+
+      # 2. حاوية البدء لسحب النسخة الأولية وتنظيف البيانات
+      initContainers:
+      - name: init-postgres
+        image: postgres:15
+        env:
+        - name: PGPASSWORD
+          value: "rep_pass_123"
+        command:
+        - bash
+        - "-c"
+        - |
+          set -e
+          ORDINAL=${HOSTNAME##*-}
+          if [ "$ORDINAL" -eq "1" ]; then
+            echo "Waiting for master (postgres-db-0)..."
+            until pg_isready -h postgres-db-0.postgres-db-service; do sleep 2; done
+            
+            echo "Cleaning old data and taking base backup..."
+            rm -rf /var/lib/postgresql/data/*
+            pg_basebackup -h postgres-db-0.postgres-db-service -D /var/lib/postgresql/data -U replicator -v -P -X stream
+            
+            echo "Signaling standby mode..."
+            touch /var/lib/postgresql/data/standby.signal
+          fi
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/postgresql/data
+
+      containers:
+      - name: postgres
+        image: postgres:15
+        env:
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: banking-config
+              key: DB_NAME
+        - name: POSTGRES_USER
+          valueFrom:
+            configMapKeyRef:
+              name: banking-config
+              key: DB_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: banking-secrets
+              key: postgres-password
+        # إعدادات المزامنة اللحظية (Streaming Replication)
+        args: 
+        - "-c"
+        - "wal_level=replica"
+        - "-c"
+        - "hot_standby=on"
+        - "-c"
+        - "hba_file=/etc/postgresql/pg_hba.conf"
+        # الربط المباشر بالقائد - هذا السطر يحل مشكلة الـ (0 rows)
+        - "-c"
+        - "primary_conninfo=host=postgres-db-0.postgres-db-service port=5432 user=replicator password=rep_pass_123"
+        ports:
+        - containerPort: 5432
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/postgresql/data
+        - name: pg-hba-config
+          mountPath: /etc/postgresql/pg_hba.conf
+          subPath: pg_hba.conf
+  
+      volumes:
+      - name: pg-hba-config
+        configMap:
+          name: postgres-replication-config
+
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
