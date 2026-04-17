@@ -199,7 +199,7 @@ Add to your **hosts file**
 ```
 
 Open in browser
-![dashboard](./images/dashboard.png)
+
 Dashboard
 
 ```
