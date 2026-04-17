@@ -53,11 +53,12 @@ Worker Node 2
 └── postgres-db-1 (Replica)
 
 Replication: Synchronous Streaming
+
+```
 ####################
 #################
 ###########
 ![streaming](./images/streming.PNG)
-```
 
 ### Benefits
 
